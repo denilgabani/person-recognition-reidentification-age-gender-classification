@@ -2,7 +2,7 @@ import cv2
 import numpy as np
 from openvino.inference_engine import IECore
 
-class AgeGenderDetectionModel:
+class AgeGenderRecognitionModel:
 
     def __init__(self, model_name, device='CPU', extensions=None):
         
@@ -17,7 +17,6 @@ class AgeGenderDetectionModel:
         self.input_name = None
         self.input_shape = None
         self.output_names = None
-        self.output_shape = None
 
     def load_model(self):
 
@@ -46,8 +45,7 @@ class AgeGenderDetectionModel:
         
         self.input_name = next(iter(self.network.inputs))
         self.input_shape = self.network.inputs[self.input_name].shape
-        self.output_names = next(iter(self.network.outputs))
-        self.output_shape = self.network.outputs[self.output_names].shape
+        self.output_names = [i for i in self.network.outputs]
         
     def predict(self, image, prob_threshold):
 
@@ -78,18 +76,10 @@ class AgeGenderDetectionModel:
 
     def preprocess_output(self, outputs, prob_threshold):
 
-        coords =[]
-        outs = outputs[self.output_names][0][0]
-        for out in outs:
-            conf = out[2]
-            if conf>prob_threshold:
-                x_min=out[3]
-                y_min=out[4]
-                x_max=out[5]
-                y_max=out[6]
-                coords.append([x_min,y_min,x_max,y_max])
-        return coords
-        
+        print(outputs)
+        age = outputs[self.output_names[0]][0][0][0][0] * 100
+        gender = np.argmax(self.output_names[1]) #0:female, 1:male
+        print(gender)
 
 
 
