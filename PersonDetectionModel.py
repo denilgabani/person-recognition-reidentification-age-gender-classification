@@ -54,20 +54,17 @@ class PersonDetectionModel:
         
         img_processed = self.preprocess_input(image.copy())
         outputs = self.exec_net.infer({self.input_name:img_processed})
-        coords = self.preprocess_output(outputs, prob_threshold)
-        if (len(coords)==0):
-            return 0, 0
-        coords = coords[0] #take the first detected face
+        coords = self.preprocess_output(outputs, prob_threshold) #take the first detected face
         h=image.shape[0]
         w=image.shape[1]
         coords = coords* np.array([w, h, w, h])
         coords = coords.astype(np.int32)
         
-        cropped_face = image[coords[1]:coords[3], coords[0]:coords[2]]
-        return cropped_face, coords
+        cv2.rectangle(image, (coords[0],coords[1]), (coords[2],coords[3]),(255,0,0),2)
+        cv2.imshow("img",image)
 
     def check_model(self):
-        ''
+        pass
 
     def preprocess_input(self, image):
 
@@ -87,7 +84,11 @@ class PersonDetectionModel:
                 y_min=out[4]
                 x_max=out[5]
                 y_max=out[6]
-                coords.append([x_min,y_min,x_max,y_max])
+                coords=[x_min,y_min,x_max,y_max]
         return coords
-        
 
+
+pd = PersonDetectionModel("intel/person-detection-retail-0013/FP32/person-detection-retail-0013.xml")
+pd.load_model()
+img = cv2.imread("/home/dg/Pictures/person2.png")
+pd.predict(img,0.6)
