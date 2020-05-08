@@ -60,8 +60,7 @@ class PersonDetectionModel:
         coords = coords* np.array([w, h, w, h])
         coords = coords.astype(np.int32)
         
-        cv2.rectangle(image, (coords[0],coords[1]), (coords[2],coords[3]),(255,0,0),2)
-        cv2.imshow("img",image)
+        return coords
 
     def check_model(self):
         pass
