@@ -54,16 +54,12 @@ class PersonReidentificationModel:
         
         img_processed = self.preprocess_input(image.copy())
         outputs = self.exec_net.infer({self.input_name:img_processed})
-        coords = self.preprocess_output(outputs, prob_threshold) #take the first detected face
-        h=image.shape[0]
-        w=image.shape[1]
-        coords = coords* np.array([w, h, w, h])
-        coords = coords.astype(np.int32)
+        rei_vector = self.preprocess_output(outputs, prob_threshold)
         
-        return coords
+        return rei_vector
 
     def check_model(self):
-        pass
+        ''
 
     def preprocess_input(self, image):
 
@@ -74,20 +70,7 @@ class PersonReidentificationModel:
 
     def preprocess_output(self, outputs, prob_threshold):
 
-        coords =[]
-        outs = outputs[self.output_names][0][0]
-        for out in outs:
-            conf = out[2]
-            if conf>prob_threshold:
-                x_min=out[3]
-                y_min=out[4]
-                x_max=out[5]
-                y_max=out[6]
-                coords=[x_min,y_min,x_max,y_max]
-        return coords
+        output = outputs[self.output_names][0]
+        return output
+        
 
-
-pd = PersonDetectionModel("intel/person-detection-retail-0013/FP32/person-detection-retail-0013.xml")
-pd.load_model()
-img = cv2.imread("/home/dg/Pictures/person2.png")
-pd.predict(img,0.6)

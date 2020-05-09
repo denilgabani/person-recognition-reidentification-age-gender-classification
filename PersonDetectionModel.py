@@ -4,13 +4,14 @@ from openvino.inference_engine import IECore
 
 class PersonDetectionModel:
 
-    def __init__(self, model_name, device='CPU', extensions=None):
+    def __init__(self, model_name, device='CPU', extensions=None, num_requests=1):
         
         self.model_name = model_name
         self.device = device
         self.extensions = extensions
         self.model_structure = self.model_name
         self.model_weights = self.model_name.split('.')[0]+'.bin'
+        self.num_requests = num_requests
         self.plugin = None
         self.network = None
         self.exec_net = None
@@ -42,7 +43,7 @@ class PersonDetectionModel:
                 print("Give the path of cpu extension")
                 exit(1)
                 
-        self.exec_net = self.plugin.load_network(network=self.network, device_name=self.device,num_requests=1)
+        self.exec_net = self.plugin.load_network(network=self.network, device_name=self.device,num_requests=self.num_requests)
         
         self.input_name = next(iter(self.network.inputs))
         self.input_shape = self.network.inputs[self.input_name].shape
@@ -57,10 +58,12 @@ class PersonDetectionModel:
         coords = self.preprocess_output(outputs, prob_threshold) #take the first detected face
         h=image.shape[0]
         w=image.shape[1]
+        if len(coords)==0:
+            return 0,0
         coords = coords* np.array([w, h, w, h])
         coords = coords.astype(np.int32)
         
-        return coords
+        return coords, len(coords)
 
     def check_model(self):
         pass
@@ -80,14 +83,18 @@ class PersonDetectionModel:
             conf = out[2]
             if conf>prob_threshold:
                 x_min=out[3]
+                if x_min<0:
+                    x_min=0
                 y_min=out[4]
+                if y_min<0:
+                    y_min=0
                 x_max=out[5]
+                if x_max<0:
+                    x_max=0
                 y_max=out[6]
-                coords=[x_min,y_min,x_max,y_max]
+                if y_max<0:
+                    y_max=0
+                    
+                coords.append([x_min,y_min,x_max,y_max])
         return coords
 
-
-pd = PersonDetectionModel("intel/person-detection-retail-0013/FP32/person-detection-retail-0013.xml")
-pd.load_model()
-img = cv2.imread("/home/dg/Pictures/person2.png")
-pd.predict(img,0.6)
