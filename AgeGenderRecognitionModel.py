@@ -48,10 +48,10 @@ class AgeGenderRecognitionModel:
         self.input_shape = self.network.inputs[self.input_name].shape
         self.output_names = [i for i in self.network.outputs]
         
-    def predict(self, image, prob_threshold):
+    def predict(self, image):
         img_processed = self.preprocess_input(image.copy())
         outputs = self.exec_net.infer({self.input_name:img_processed})
-        age, gender = self.preprocess_output(outputs, prob_threshold)
+        age, gender = self.preprocess_output(outputs)
         
         return age, gender
 
@@ -65,7 +65,7 @@ class AgeGenderRecognitionModel:
         return img_processed
             
 
-    def preprocess_output(self, outputs, prob_threshold):
+    def preprocess_output(self, outputs):
 
         age = outputs[self.output_names[0]][0][0][0][0] * 100
         gender = np.argmax(outputs[self.output_names[1]]) #0:female 1:male

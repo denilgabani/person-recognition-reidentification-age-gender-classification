@@ -49,12 +49,12 @@ class PersonReidentificationModel:
         self.output_names = next(iter(self.network.outputs))
         self.output_shape = self.network.outputs[self.output_names].shape
         
-    def predict(self, image, prob_threshold):
+    def predict(self, image):
 
         
         img_processed = self.preprocess_input(image.copy())
         outputs = self.exec_net.infer({self.input_name:img_processed})
-        rei_vector = self.preprocess_output(outputs, prob_threshold)
+        rei_vector = self.preprocess_output(outputs)
         
         return rei_vector
 
@@ -68,7 +68,7 @@ class PersonReidentificationModel:
         return img_processed
             
 
-    def preprocess_output(self, outputs, prob_threshold):
+    def preprocess_output(self, outputs):
 
         output = outputs[self.output_names][0]
         return output
