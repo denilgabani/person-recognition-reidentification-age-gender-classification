@@ -19,6 +19,7 @@ class FaceDetectionModel:
         self.input_shape = None
         self.output_names = None
         self.output_shape = None
+        self.is_sync = None
 
     def load_model(self):
 
@@ -44,27 +45,43 @@ class FaceDetectionModel:
                 exit(1)
                 
         self.exec_net = self.plugin.load_network(network=self.network, device_name=self.device,num_requests=self.num_requests)
-        
+        if self.num_requests == 1:
+            self.is_sync = True
         self.input_name = next(iter(self.network.inputs))
         self.input_shape = self.network.inputs[self.input_name].shape
         self.output_names = next(iter(self.network.outputs))
         self.output_shape = self.network.outputs[self.output_names].shape
         
-    def predict(self, image, prob_threshold):
+    def predict(self, image, prob_threshold, cur_req_id=None, next_req_id=None):
 
         
         img_processed = self.preprocess_input(image.copy())
-        outputs = self.exec_net.infer({self.input_name:img_processed})
-        coords = self.preprocess_output(outputs, prob_threshold)
-        if (len(coords)==0):
-            return [], []
-        coord = coords[0]
-        h=image.shape[0]
-        w=image.shape[1]
-        coord = coord* np.array([w, h, w, h])
-        coord = coord.astype(np.int32)
-        cropped_face = image[coord[1]:coord[3], coord[0]:coord[2]]
-        return cropped_face, coord
+        if self.is_sync:
+            outputs = self.exec_net.infer({self.input_name:img_processed})
+            coords = self.preprocess_output(outputs, prob_threshold)
+            if (len(coords)==0):
+                return [], [], True
+            coord = coords[0]
+            h=image.shape[0]
+            w=image.shape[1]
+            coord = coord* np.array([w, h, w, h])
+            coord = coord.astype(np.int32)
+            cropped_face = image[coord[1]:coord[3], coord[0]:coord[2]]
+            return cropped_face, coord, True
+        self.exec_net.start_async(request_id=next_req_id, inputs={self.input_name:img_processed})
+        if self.exec_net.requests[cur_req_id].wait(0) == 0:
+            outputs = self.exec_net.requests[cur_req_id].outputs
+            coords = self.preprocess_output(outputs, prob_threshold)
+            if (len(coords)==0):
+                return [], [], True
+            coord = coords[0]
+            h=image.shape[0]
+            w=image.shape[1]
+            coord = coord* np.array([w, h, w, h])
+            coord = coord.astype(np.int32)
+            cropped_face = image[coord[1]:coord[3], coord[0]:coord[2]]
+            return cropped_face, coord, True
+        return None, None, False
 
     def check_model(self):
         ''

@@ -18,6 +18,7 @@ class AgeGenderRecognitionModel:
         self.input_name = None
         self.input_shape = None
         self.output_names = None
+        self.is_sync = None
 
     def load_model(self):
 
@@ -42,18 +43,27 @@ class AgeGenderRecognitionModel:
                 print("Give the path of cpu extension")
                 exit(1)
                 
-        self.exec_net = self.plugin.load_network(network=self.network, device_name=self.device,num_requests=self.num_requests)
-        
+        self.exec_net = self.plugin.load_network(network=self.network, device_name=self.device, num_requests=self.num_requests)
+        if self.num_requests == 1:
+            self.is_sync = True
         self.input_name = next(iter(self.network.inputs))
         self.input_shape = self.network.inputs[self.input_name].shape
         self.output_names = [i for i in self.network.outputs]
         
-    def predict(self, image):
+    def predict(self, image, cur_req_id=None, next_req_id=None):
         img_processed = self.preprocess_input(image.copy())
-        outputs = self.exec_net.infer({self.input_name:img_processed})
-        age, gender = self.preprocess_output(outputs)
-        
-        return age, gender
+        if self.is_sync:
+            outputs = self.exec_net.infer({self.input_name:img_processed})
+            age, gender = self.preprocess_output(outputs)
+            
+            return age, gender, True
+        self.exec_net.start_async(request_id=next_req_id, inputs={self.input_name:img_processed})
+        if self.exec_net.requests[cur_req_id].wait(0) == 0:
+            outputs = self.exec_net.requests[cur_req_id].outputs
+            age, gender = self.preprocess_output(outputs)
+            
+            return age, gender, True
+        return None, None, False
 
     def check_model(self):
         ''

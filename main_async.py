@@ -51,15 +51,16 @@ def cos_similarity(X, Y):
     Y = Y.T    # (1, 256) x (256, n) = (1, n)
     return np.dot(X, Y) / (np.linalg.norm(X) * np.linalg.norm(Y, axis=0))
 
-def identify_age_gender(person_img, frame, person_coords, img_id, prob_threshold, fd, agd):
+def identify_age_gender(person_img, frame, cur_req_id, next_req_id, person_coords, img_id, prob_threshold, fd, agd):
     age=None
     gender=None
 
-    cropped_face, face_coord, is_infer_face = fd.predict(person_img, prob_threshold)
+    cropped_face, face_coord, is_infer_face = fd.predict(person_img, prob_threshold, cur_req_id['face'], next_req_id['face'])
+    cur_req_id['face'], next_req_id['face'] = next_req_id['face'], cur_req_id['face']
     if is_infer_face:
         if not len(face_coord)==0:
-            age, gender, is_infer_gender = agd.predict(cropped_face)
-            
+            age, gender, is_infer_gender = agd.predict(cropped_face, cur_req_id['age'], next_req_id['age'])
+            cur_req_id['age'], next_req_id['age'] = next_req_id['age'], cur_req_id['age']
             if is_infer_gender:
                 if gender==0:
                     gender='F'
@@ -68,23 +69,23 @@ def identify_age_gender(person_img, frame, person_coords, img_id, prob_threshold
                 age = int(age)
                 cv2.putText(frame, "age:"+str(int(age))+" gender:"+str(gender), (person_coords[0]-10,person_coords[1]+5), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255,0,0),1)
                 cv2.putText(frame, "id:"+str(img_id), (person_coords[0]-10,person_coords[1]), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255,0,0),1)
-    return frame, age, gender
+    return frame, age, gender, cur_req_id, next_req_id
 
-def webcam_processing(frame, pdm, prm, fd, agd, prob_threshold, id_vec, person_id, image_dir):
+def webcam_processing(frame, next_frame, pdm, prm, fd, agd, prob_threshold, id_vec, person_id, image_dir, number_requests, cur_req_id, next_req_id):
 
     img_id=1
     count=0
     PRESENT = False
-    persons_coords, count, is_infer_person = pdm.predict(frame.copy(), prob_threshold)
+    persons_coords, count, is_infer_person = pdm.predict(next_frame.copy(), prob_threshold, cur_req_id['person'], next_req_id['person'])
     if is_infer_person:
         if not count==0:
             for person_coords in persons_coords:
                 person_img = frame[person_coords[1]:person_coords[3],person_coords[0]:person_coords[2]]
-                rei_vector, is_infer_reid = prm.predict(person_img)
-                
+                rei_vector, is_infer_reid = prm.predict(person_img, cur_req_id['reid'], next_req_id['reid'])
+                cur_req_id['reid'], next_req_id['reid'] = next_req_id['reid'], cur_req_id['reid']
                 if is_infer_reid:
                     if len(id_vec)==0:
-                        frame, age, gender = identify_age_gender(person_img, frame, person_coords, img_id, prob_threshold, fd, agd)
+                        frame, age, gender, cur_req_id, next_req_id = identify_age_gender(person_img, frame, cur_req_id, next_req_id, person_coords, img_id, prob_threshold, fd, agd)
                         id_vec[person_id]=[rei_vector, age, gender]
                         if not image_dir==None:
                             cv2.imwrite(image_dir+'/'+str(img_id)+'.jpg', person_img)
@@ -96,7 +97,7 @@ def webcam_processing(frame, pdm, prm, fd, agd, prob_threshold, id_vec, person_i
                                 img_id=i
                                 PRESENT=True
                                 if id_vec[img_id][1]==None or id_vec[img_id][2]==None:
-                                    frame, age, gender = identify_age_gender(person_img, frame, person_coords, img_id, prob_threshold, fd, agd)
+                                    next_frame, age, gender, cur_req_id, next_req_id = identify_age_gender(person_img, frame, cur_req_id, next_req_id, person_coords, img_id, prob_threshold, fd, agd)
                                     id_vec[img_id][1] = age
                                     id_vec[img_id][2] = gender
                                 break
@@ -107,22 +108,22 @@ def webcam_processing(frame, pdm, prm, fd, agd, prob_threshold, id_vec, person_i
                             person_id+=1
                             if not image_dir==None:
                                 cv2.imwrite(image_dir+'/'+str(img_id)+'.jpg', person_img)
-                            frame, age, gender = identify_age_gender(person_img, frame, person_coords, img_id, prob_threshold, fd, agd)
+                            next_frame, age, gender, cur_req_id, next_req_id = identify_age_gender(person_img, frame, cur_req_id, next_req_id, person_coords, img_id, prob_threshold, fd, agd)
                             id_vec[img_id] = [rei_vector, age, gender]
                     print(img_id, id_vec[img_id][1], id_vec[img_id][2])
                 cv2.rectangle(frame, (person_coords[0],person_coords[1]), (person_coords[2],person_coords[3]), (255,0,0),2)
                 
     cv2.putText(frame, "count:"+str(count), (40,40), cv2.FONT_HERSHEY_SIMPLEX, 2, (0, 255, 0), 2)
-    return frame, id_vec, person_id
+    return frame, next_frame, id_vec, person_id, cur_req_id, next_req_id
 
 
-def video_processing(frame, pdm, prm, fd, agd, prob_threshold, id_vec, person_id, image_dir):
+def video_processing(frame, next_frame, pdm, prm, fd, agd, prob_threshold, id_vec, person_id, image_dir, number_requests, cur_req_id, next_req_id):
     frame_h = frame.shape[0]
     frame_w = frame.shape[1]
     img_id=1
     count=0
     PRESENT = False
-    persons_coords, count, is_infer_person = pdm.predict(frame.copy(), prob_threshold)
+    persons_coords, count, is_infer_person = pdm.predict(next_frame.copy(), prob_threshold, cur_req_id['person'], next_req_id['person'])
     if is_infer_person:
         if not count==0:
             for person_coords in persons_coords:
@@ -130,11 +131,11 @@ def video_processing(frame, pdm, prm, fd, agd, prob_threshold, id_vec, person_id
                 y_cent = (person_coords[1] + person_coords[3])//2
                 if (y_cent<=frame_h//2-65) and (y_cent>=frame_h//2-95):
                     person_img = frame[person_coords[1]:person_coords[3],person_coords[0]:person_coords[2]]
-                    rei_vector, is_infer_reid = prm.predict(person_img)
-                    
+                    rei_vector, is_infer_reid = prm.predict(person_img, cur_req_id['reid'], next_req_id['reid'])
+                    cur_req_id['reid'], next_req_id['reid'] = next_req_id['reid'], cur_req_id['reid']
                     if is_infer_reid:
                         if len(id_vec)==0:
-                            frame, age, gender = identify_age_gender(person_img, frame, person_coords, img_id, prob_threshold, fd, agd)
+                            frame, age, gender, cur_req_id, next_req_id = identify_age_gender(person_img, frame, cur_req_id, next_req_id, person_coords, img_id, prob_threshold, fd, agd)
                             id_vec[person_id]=[rei_vector, age, gender]
                             if not image_dir==None:
                                 cv2.imwrite(image_dir+'/'+str(img_id)+'.jpg', person_img)
@@ -146,7 +147,7 @@ def video_processing(frame, pdm, prm, fd, agd, prob_threshold, id_vec, person_id
                                     img_id=i
                                     PRESENT=True
                                     if id_vec[img_id][1]==None or id_vec[img_id][2]==None:
-                                        frame, age, gender = identify_age_gender(person_img, frame, person_coords, img_id, prob_threshold, fd, agd)
+                                        next_frame, age, gender, cur_req_id, next_req_id = identify_age_gender(person_img, frame, cur_req_id, next_req_id, person_coords, img_id, prob_threshold, fd, agd)
                                         id_vec[img_id][1] = age
                                         id_vec[img_id][2] = gender
                                     break
@@ -157,14 +158,14 @@ def video_processing(frame, pdm, prm, fd, agd, prob_threshold, id_vec, person_id
                                 person_id+=1
                                 if not image_dir==None:
                                     cv2.imwrite(image_dir+'/'+str(img_id)+'.jpg', person_img)
-                                frame, age, gender = identify_age_gender(person_img, frame, person_coords, img_id, prob_threshold, fd, agd)
+                                next_frame, age, gender, cur_req_id, next_req_id = identify_age_gender(person_img, frame, cur_req_id, next_req_id, person_coords, img_id, prob_threshold, fd, agd)
                                 id_vec[img_id] = [rei_vector, age, gender]
                         print(img_id, id_vec[img_id][1], id_vec[img_id][2])
                 cv2.rectangle(frame, (person_coords[0],person_coords[1]), (person_coords[2],person_coords[3]), (255,0,0),2)
                 
     cv2.line(frame, (0, frame_h//2-80), (frame_w, frame_h//2-80), (0,0,255),2)
     cv2.putText(frame, "count:"+str(count), (40,40), cv2.FONT_HERSHEY_SIMPLEX, 2, (0, 255, 0), 2)
-    return frame, id_vec, person_id
+    return frame, next_frame, id_vec, person_id, cur_req_id, next_req_id
 
 def main(args):
     deviceType = args.device
@@ -176,13 +177,13 @@ def main(args):
     prob_threshold = probThresh
     startTime = time.time()
     
-    pdm = PersonDetectionModel("intel/person-detection-retail-0013/FP32/person-detection-retail-0013.xml",deviceType,cpuExt)
+    pdm = PersonDetectionModel("intel/person-detection-retail-0013/FP32/person-detection-retail-0013.xml",deviceType,cpuExt, 2)
     pdm.load_model()
-    fd = FaceDetectionModel("intel/face-detection-retail-0005/FP32/face-detection-retail-0005.xml",deviceType,cpuExt)
+    fd = FaceDetectionModel("intel/face-detection-retail-0005/FP32/face-detection-retail-0005.xml",deviceType,cpuExt, 2)
     fd.load_model()
-    prm = PersonReidentificationModel("intel/person-reidentification-retail-0300/FP32/person-reidentification-retail-0300.xml",deviceType,cpuExt)
+    prm = PersonReidentificationModel("intel/person-reidentification-retail-0300/FP32/person-reidentification-retail-0300.xml",deviceType,cpuExt, 2)
     prm.load_model()
-    agd = AgeGenderRecognitionModel("intel/age-gender-recognition-retail-0013/FP32/age-gender-recognition-retail-0013.xml",deviceType,cpuExt)
+    agd = AgeGenderRecognitionModel("intel/age-gender-recognition-retail-0013/FP32/age-gender-recognition-retail-0013.xml",deviceType,cpuExt, 2)
     agd.load_model()
     
     if filePath=='cam':
@@ -192,18 +193,24 @@ def main(args):
     
     id_vec = {}
     person_id=1
+    ret, frame = camera.read()
+    cur_req_id={'person':0,'reid':0, 'face':0, 'age':0}
+    next_req_id={'person':1,'reid':1,'face':1, 'age':1}
+    number_requests=2
     while camera.isOpened():
-        ret, frame = camera.read()
+        ret, next_frame = camera.read()
     
         if not ret:
             break
         key = cv2.waitKey(60)
         if filePath=='cam':
-            frame, id_vec, person_id = webcam_processing(frame, pdm, prm, fd, agd, prob_threshold, id_vec, person_id, image_dir)
+            frame, next_frame, id_vec, person_id, cur_req_id, next_req_id = webcam_processing(frame, next_frame, pdm, prm, fd, agd, prob_threshold, id_vec, person_id, image_dir, number_requests, cur_req_id, next_req_id)
         else:
-            frame, id_vec, person_id = video_processing(frame, pdm, prm, fd, agd, prob_threshold, id_vec, person_id, image_dir)
+            frame, next_frame, id_vec, person_id, cur_req_id, next_req_id = video_processing(frame, next_frame, pdm, prm, fd, agd, prob_threshold, id_vec, person_id, image_dir, number_requests, cur_req_id, next_req_id)
         
         cv2.imshow('video',cv2.resize(frame,(768,456)))
+        frame = next_frame
+        cur_req_id['person'], next_req_id['person'] = next_req_id['person'], cur_req_id['person']
         if key==27:
             break
     if is_export:
