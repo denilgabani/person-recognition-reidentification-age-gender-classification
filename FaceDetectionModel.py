@@ -69,7 +69,7 @@ class FaceDetectionModel:
             cropped_face = image[coord[1]:coord[3], coord[0]:coord[2]]
             return cropped_face, coord, True
         self.exec_net.start_async(request_id=next_req_id, inputs={self.input_name:img_processed})
-        if self.exec_net.requests[cur_req_id].wait(0) == 0:
+        if self.exec_net.requests[cur_req_id].wait() == 0:
             outputs = self.exec_net.requests[cur_req_id].outputs
             coords = self.preprocess_output(outputs, prob_threshold)
             if (len(coords)==0):

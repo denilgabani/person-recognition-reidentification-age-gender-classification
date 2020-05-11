@@ -60,8 +60,9 @@ class PersonReidentificationModel:
             outputs = self.exec_net.infer({self.input_name:img_processed})
             rei_vector = self.preprocess_output(outputs)
             return rei_vector, True
+
         self.exec_net.start_async(request_id=next_req_id, inputs={self.input_name:img_processed})
-        if self.exec_net.requests[cur_req_id].wait(0) == 0:
+        if self.exec_net.requests[cur_req_id].wait() == 0:
             outputs = self.exec_net.requests[cur_req_id].outputs
             rei_vector = self.preprocess_output(outputs)
             return rei_vector, True

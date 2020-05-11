@@ -218,5 +218,3 @@ if __name__ == '__main__':
     args = build_argparser().parse_args()
     main(args)
     
-    
-"""!python main_async.py - sample2.mp4"""

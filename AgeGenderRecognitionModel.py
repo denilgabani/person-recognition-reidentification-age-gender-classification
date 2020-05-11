@@ -58,7 +58,7 @@ class AgeGenderRecognitionModel:
             
             return age, gender, True
         self.exec_net.start_async(request_id=next_req_id, inputs={self.input_name:img_processed})
-        if self.exec_net.requests[cur_req_id].wait(0) == 0:
+        if self.exec_net.requests[cur_req_id].wait() == 0:
             outputs = self.exec_net.requests[cur_req_id].outputs
             age, gender = self.preprocess_output(outputs)
             

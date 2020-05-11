@@ -127,7 +127,6 @@ def video_processing(frame, next_frame, pdm, prm, fd, agd, prob_threshold, id_ve
     if is_infer_person:
         if not count==0:
             for person_coords in persons_coords:
-                x_cent = (person_coords[0] + person_coords[2])//2
                 y_cent = (person_coords[1] + person_coords[3])//2
                 if (y_cent<=frame_h//2-65) and (y_cent>=frame_h//2-95):
                     person_img = frame[person_coords[1]:person_coords[3],person_coords[0]:person_coords[2]]
@@ -226,4 +225,3 @@ if __name__ == '__main__':
     main(args)
     
     
-"""!python main_async.py - sample2.mp4"""
