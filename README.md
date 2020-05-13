@@ -1,7 +1,7 @@
 # person-recognition-reidentification-age-gender-classification
 
 ## Introduction
-This demo project is used to detect the person and used person re-identification with age and gender recognition. It can export the images of detected person and also export csv file with image id and corrosponding age and gender.
+This demo project is used to detect the person and used for person re-identification with age and gender recognition. It can export the images of detected person and also export csv file with image id and corrosponding age and gender.
 
 ## Demo
 
@@ -24,7 +24,7 @@ This demo project is used to detect the person and used person re-identification
   See this [guide](https://docs.openvinotoolkit.org/latest/_docs_install_guides_installing_openvino_linux.html) for installing openvino.
 
 #### Step 1
-Clone the repository:- https://github.com/denilDG/Computer-Pointer-Controller
+Clone the repository:- https://github.com/denilDG/person-recognition-reidentification-age-gender-classification
 
 #### Step 2
 Initialize the openVINO environment:-
