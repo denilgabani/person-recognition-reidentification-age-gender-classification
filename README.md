@@ -57,7 +57,7 @@ python main_async.py -i media/sample2.mp4 -image_dir images -is_export_csv=True
 
 ## Documentation
 
-### Documentatiob of used models
+### Documentation of used models
 
 1. [Person Detection Model](https://docs.openvinotoolkit.org/latest/_models_intel_person_detection_retail_0013_description_person_detection_retail_0013.html)
 2. [Person Re-identification Model](https://docs.openvinotoolkit.org/latest/_models_intel_person_reidentification_retail_0300_description_person_reidentification_retail_0300.html)
